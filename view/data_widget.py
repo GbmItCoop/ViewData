@@ -5,15 +5,18 @@ class DataWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.create_widgets()
-        self.create_layout()
+        layout = QtWidgets.QVBoxLayout(self)
 
-    def create_widgets(self):
         self.table = QtWidgets.QTableWidget()
         self.table.setRowCount(10)
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["A", "B", "C"])
 
+        layout.addWidget(self.table)
+
+        self.load_fake_data()
+
+    def load_fake_data(self):
         for row in range(10):
             self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(str(row)))
             self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(str(row * 2)))
@@ -22,7 +25,3 @@ class DataWidget(QtWidgets.QWidget):
         self.table.horizontalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeMode.Stretch
         )
-
-    def create_layout(self):
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.table)
