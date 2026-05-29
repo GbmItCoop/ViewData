@@ -1,10 +1,12 @@
 from PySide6 import QtWidgets
+from view.about_table_dialog import AboutTableDialog
 from view.open_table_dialog import OpenTableDialog
 from view.data_widget import DataWidget
 from view.PlotWidget import PlotWidget
 from view.actions import create_actions
 from view.menus import create_menus
 from view.toolbar import create_toolbar
+from model.sql_model import DatabaseModel
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -13,6 +15,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.setWindowTitle("Application de visualisation de données")
         self.resize(900, 550)
+
+        self.database_model = DatabaseModel()
 
         create_actions(self)
         create_menus(self)
@@ -33,20 +37,35 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.data_widget.columns_changed.connect(
             self.plot_widget.update_columns
-            )
-
-        self.plot_widget.update_columns(
-            self.data_widget.get_columns()
-            )
+        )
 
     def open_table(self):
         dialog = OpenTableDialog(self)
 
         if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            self.data_widget.load_sqlite_table(
+            success = self.database_model.open_database(
                 dialog.database_path,
                 dialog.table_name
             )
+
+            if not success:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Erreur",
+                    "Impossible d'ouvrir la base de données."
+                )
+                return
+
+            self.data_widget.set_model(self.database_model.model)
+            
+            about_dialog = AboutTableDialog(
+                dialog.database_path,
+                dialog.table_name,
+                self.database_model.model,
+                self
+            )
+
+            about_dialog.exec()
 
             self.plot_widget.update_columns(
                 self.data_widget.get_columns()
@@ -59,10 +78,27 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
     def save_changes(self):
-        QtWidgets.QMessageBox.information(
-            self, "Enregistrement", "Les modifications ont été enregistrées."
-        )
-        self.statusBar().showMessage("Modifications enregistrées")
+        if self.database_model.model is None:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Aucune table",
+                "Aucune table n'est ouverte."
+            )
+            return
+
+        if self.database_model.submit():
+            QtWidgets.QMessageBox.information(
+                self,
+                "Enregistrement",
+                "Les modifications ont été enregistrées."
+            )
+            self.statusBar().showMessage("Modifications enregistrées")
+        else:
+            QtWidgets.QMessageBox.critical(
+                self,
+                "Erreur",
+                "Impossible d'enregistrer les modifications."
+            )
 
     def export_graph_png(self):
         self.tabs.setCurrentWidget(self.plot_widget)
@@ -88,12 +124,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self,
             "À propos",
             """
-        <h3>Application de visualisation de données</h3>
-
-        Version 1.0
-
-        Formation Python Interfaces Graphiques
-
-        PySide6 / SQLite / Graphiques
-        """,
+            <h3>Application de visualisation de données</h3>
+            <p>Version 1.0</p>
+            <p>Formation Python Interfaces Graphiques</p>
+            <p>PySide6 / SQLite / Modèle-Vue / Graphiques</p>
+            """,
         )
