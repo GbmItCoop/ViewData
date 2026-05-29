@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets
-
+from view.open_table_dialog import OpenTableDialog
 from view.data_widget import DataWidget
 from view.PlotWidget import PlotWidget
 from view.actions import create_actions
@@ -26,23 +26,37 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(self.tabs)
 
         self.data_widget = DataWidget()
-        self.plot_widget = PlotWidget()
+        self.plot_widget = PlotWidget(self)
 
         self.tabs.addTab(self.data_widget, "Données")
         self.tabs.addTab(self.plot_widget, "Graphes")
 
-    def open_table(self):
-        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self,
-            "Ouvrir une base SQLite",
-            "",
-            "Bases SQLite (*.sqlite *.db);;Tous les fichiers (*)",
-        )
+        self.data_widget.columns_changed.connect(
+            self.plot_widget.update_columns
+            )
 
-        if file_path:
-            self.data_widget.load_fake_data()
-            self.statusBar().showMessage(f"Table ouverte : {file_path}")
+        self.plot_widget.update_columns(
+            self.data_widget.get_columns()
+            )
+
+    def open_table(self):
+        dialog = OpenTableDialog(self)
+
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            self.data_widget.load_sqlite_table(
+                dialog.database_path,
+                dialog.table_name
+            )
+
+            self.plot_widget.update_columns(
+                self.data_widget.get_columns()
+            )
+
             self.tabs.setCurrentWidget(self.data_widget)
+
+            self.statusBar().showMessage(
+                f"Table ouverte : {dialog.table_name} depuis {dialog.database_path}"
+            )
 
     def save_changes(self):
         QtWidgets.QMessageBox.information(
